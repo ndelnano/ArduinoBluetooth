@@ -1,19 +1,40 @@
 /**
  * Created by nickdelnano on 12/5/15.
  */
-//Arduino code to connect Adafruit motor shield V2 to bluetooth controller
- 
-#include <Adafruit_MotorShield.h>
+
+/*
+* This Arduino script acts as a client to a Bluetooth server and implements a text-based protocol
+* to control two sets of bidirectional motors using an Adafruit Motor Shield V2. There exits an Android
+* application containing a server implementation that can be used with this code. The Android application 
+* is published on the Google Play store, and its name and source code can be found at 
+* https://github.com/ndelnano/BluetoothAndroidControllerAdafruitV2/blob/master/README.md.
+*
+* A blog post containing details of my use of these projects and a video demonstration
+* be found here: http://ndelnano.github.io/2016/01/bluetooth-and-arduino
+*
+* The text based protocol is as follows:
+*      'stop x' - stop all motors
+*      'move {LEFT_DIRECTION}{LEFT_SPEED} {RIGHT_DIRECTION}{RIGHT_SPEED} x'
+*          - Where *_DIRECTION are 0 or 1, and *_SPEED is in range [-255,255]
+*              *_DIRECTION = 0 => forward, 1 => backwards
+*
+*
+*  Ex: "move 0100 0100x" --sets both wheels forward at speed 100
+*      "move 0255 1255x" --sets left wheel at max speed forward, right wheel at max speed backward
+*              -- This will make your vehicle do an awesome donut! 
+*/
+
+#include "Adafruit_MotorShield.h"
 #include <SoftwareSerial.h>
 
 
 SoftwareSerial BTSerial(2, 3); // RX | TX
 
-  Adafruit_MotorShield shieldOne = Adafruit_MotorShield(); 
-  Adafruit_DCMotor *myMotor1 = shieldOne.getMotor(1);
-  Adafruit_DCMotor *myMotor2 = shieldOne.getMotor(2);
-  Adafruit_DCMotor *myMotor3 = shieldOne.getMotor(3);
-  Adafruit_DCMotor *myMotor4 = shieldOne.getMotor(4);
+Adafruit_MotorShield shieldOne = Adafruit_MotorShield(); 
+Adafruit_DCMotor *myMotor1 = shieldOne.getMotor(1);
+Adafruit_DCMotor *myMotor2 = shieldOne.getMotor(2);
+Adafruit_DCMotor *myMotor3 = shieldOne.getMotor(3);
+Adafruit_DCMotor *myMotor4 = shieldOne.getMotor(4);
 
 String incomingString;
 char received;
@@ -22,17 +43,6 @@ String rightSpeed;
 
 char c = ' ';
 boolean NL = true;
-
-//FORMAT TO RECEIVE A COMMAND
-
-//*COMMAND* + " " + "DIRECTION_LEFT_INT" + "VALUES_LEFT" + " " + "DIRECTION_RIGHT_INT" + "VALUES_RIGHT" + "x";
-//0 signals forward, 1 signals backward
-
-//"move 0100 0100x" --sets both wheels forward at speed 100
-
-//commands defined: move, stop
-
-
 
 void setup() 
 {
@@ -44,6 +54,7 @@ void setup()
 void loop()
 {
 
+ // While stream has data, read data from stream char by char
  while (BTSerial.available() > 0)
     {
         received = BTSerial.read();
@@ -52,29 +63,27 @@ void loop()
         { 
             String commandString = getCommand(incomingString);
 
-            if(commandString == "stop")
+            if (commandString == "stop")
             {
               stopMotors();
             }
             
-            if(commandString == "move")
+            if (commandString == "move")
             {
               leftSpeed = getLeftSpeed(incomingString);
               rightSpeed = getRightSpeed(incomingString);
 
-              Serial.println(rightSpeed);
-              Serial.println(leftSpeed);
-              
               setLeftMotors(leftSpeed.substring(1, leftSpeed.length()).toInt(), leftSpeed.substring(0,1).toInt());
               setRightMotors(rightSpeed.substring(1, rightSpeed.length()).toInt(), rightSpeed.substring(0,1).toInt());
             }
 
-            incomingString = ""; // Clear recieved buffer
+            // Clear received buffer
+            incomingString = ""; 
         }
         
-        if(received != 'x')
+        if (received != 'x')
         {
-        incomingString += received; 
+            incomingString += received; 
         }
     }
 
